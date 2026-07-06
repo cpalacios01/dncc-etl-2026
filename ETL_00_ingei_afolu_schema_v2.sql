@@ -1,16 +1,9 @@
--- ============================================================
+-- ===========================================================================
 -- INGEI AFOLU – Schema PostgreSQL
 -- DNCC / MADES – Paraguay
 -- Proyecto N° 01000367
--- v2: corrige dim_versiones para reflejar los reportes reales
---     presentados por Paraguay (ver bloque "DATOS INICIALES")
--- ============================================================
--- Convenciones:
---   Schemas: staging | inventario | etf_output | auditoria
---   PKs:     serial (bigint) con nombre <tabla>_id
---   FKs:     <tabla_ref>_id
---   Fechas:  timestamptz para todo lo que tenga hora
--- ============================================================
+-- Desarrollo: Claudia Palacios | cpalacios01@gmail.com | +595994648273
+-- ===========================================================================
 
 -- ────────────────────────────────────────────────────────────
 -- SCHEMAS
@@ -81,7 +74,7 @@ CREATE INDEX ON staging.raw_sector_json (sector);
 
 -- ============================================================
 -- SCHEMA: inventario
--- Dimensiones y hechos normalizados. Fuente de verdad.
+-- Dimensiones y hechos normalizados.
 -- ============================================================
 
 -- ────────────────────────────────────────────────────────────
@@ -101,7 +94,7 @@ CREATE TABLE inventario.dim_versiones (
 CREATE UNIQUE INDEX dim_versiones_activa_uq
     ON inventario.dim_versiones (activa) WHERE activa = TRUE;
 
--- Stored procedure para activar una versión (igual al que ya tenés)
+-- Procedimiento almacenado para activar una versión
 CREATE OR REPLACE PROCEDURE inventario.sp_activar_version(p_version_id INTEGER)
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -182,7 +175,7 @@ CREATE TABLE inventario.dim_variables_etf (
     nke_permitido    BOOLEAN DEFAULT TRUE,   -- nke_allowed (permite NK/NE/NO)
     node_uid         UUID,                   -- node_uid del metadata
     metadata_ver     TEXT DEFAULT '1.30.4',  -- versión del metadata ETF usado
-    -- CONSTRAINT para asegurar que podemos hacer el join
+    -- CONSTRAINT para asegurar que se pueda hacer el join
     CONSTRAINT ck_variables_etf_sector
         CHECK (sector IN ('agriculture','lulucf','energy','ippu','waste'))
 );
@@ -190,7 +183,7 @@ CREATE INDEX ON inventario.dim_variables_etf (codigo_ipcc);
 CREATE INDEX ON inventario.dim_variables_etf (sector, medida);
 CREATE INDEX ON inventario.dim_variables_etf (gas_codigo);
 
--- Tipos de dato de actividad (controlado para join con Excel)
+-- TIPOS DE DATOS DE ACTIVIDAD (controlado para join con Plantilla Excel)
 CREATE TABLE inventario.dim_tipos_dato (
     tipo_dato_id  SERIAL PRIMARY KEY,
     codigo        TEXT NOT NULL UNIQUE,  -- 'DA_CABEZAS' | 'DA_HA' | 'FE_CH4' | 'EMISION'
@@ -203,7 +196,7 @@ CREATE TABLE inventario.dim_tipos_dato (
 -- ────────────────────────────────────────────────────────────
 
 -- Datos de actividad y factores de emisión AFOLU por año y departamento
--- Origen: Excel estandarizado de Luisa / especialistas
+-- Origen: Excel estandarizado de Especialista AFOLU
 CREATE TABLE inventario.fact_datos_actividad (
     dato_actividad_id  BIGSERIAL PRIMARY KEY,
     version_id         INTEGER NOT NULL REFERENCES inventario.dim_versiones(version_id),
@@ -292,7 +285,6 @@ CREATE INDEX ON etf_output.json_generados (version_id, sector, estado);
 -- SCHEMA: auditoria
 -- Trazabilidad completa del pipeline
 -- ============================================================
-
 CREATE TABLE auditoria.log_pipeline (
     log_id        BIGSERIAL PRIMARY KEY,
     etapa         TEXT NOT NULL,    -- 'ingest_excel' | 'ingest_json' | 'transform' | 'generate_json' | 'fix_cli' | 'import_etf'
@@ -391,7 +383,6 @@ GROUP BY dv.nombre_version, ve.sector;
 -- ============================================================
 -- DATOS INICIALES
 -- ============================================================
-
 INSERT INTO inventario.dim_versiones (nombre_version, anho_base_desde, anho_base_hasta, activa, descripcion) VALUES
 ('3IBA', 1990, 2017, FALSE, 'Tercer Informe Bienal de Actualización'),
 ('4CN',  1990, 2019, FALSE, 'Cuarta Comunicación Nacional'),
